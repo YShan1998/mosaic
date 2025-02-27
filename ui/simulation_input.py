@@ -34,10 +34,10 @@ class SimulationInputUI:
             "Goods-in handling time (s)", min_value=1, value=20
         )
 
-        streamlit.write("#### Station capacity")
-        col1, col2 = streamlit.columns(2)
-        pick_capacity = col1.number_input("Pick capacity (bins)", min_value=1, value=1)
-        drop_capacity = col2.number_input("Drop capacity (bins)", min_value=1, value=2)
+        # streamlit.write("#### Station capacity")
+        # col1, col2 = streamlit.columns(2)
+        # pick_capacity = col1.number_input("Pick capacity (bins)", min_value=1, value=1)
+        # drop_capacity = col2.number_input("Drop capacity (bins)", min_value=1, value=2)
 
         streamlit.write("### Simulation input")
         col1, col2 = streamlit.columns(2)
@@ -118,8 +118,7 @@ class SimulationInputUI:
         self.goods_in_time = goods_in_time
         self.z_size = z_size
         self.number_of_skycars = number_of_skycars
-        self.pick_capacity = pick_capacity
-        self.drop_capacity = drop_capacity
+
 
         streamlit.divider()
 

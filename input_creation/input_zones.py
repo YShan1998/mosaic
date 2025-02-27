@@ -6,23 +6,35 @@ from typing import List
 import numpy
 import pandas
 
+from ui.grid_designer import GridDesignerUI
 from ui.simulation_input import SimulationInputUI
 from parameters import Parameters
 
 
 class InputZonesAndStations:
-    def __init__(
-        self, grid_data: pandas.DataFrame, simulation_input: SimulationInputUI
-    ):
-        self._create_zones(grid_data=grid_data, simulation_input=simulation_input)
-        self._create_stations(grid_data=grid_data, simulation_input=simulation_input)
+    def __init__(self, grid_designer_ui: GridDesignerUI):
+        self._create_zones(grid_designer_ui=grid_designer_ui)
+        self._create_stations(grid_designer_ui=grid_designer_ui)
 
-    def _create_zones(
-        self, grid_data: pandas.DataFrame, simulation_input: SimulationInputUI
-    ):
+    def _create_zones(self, grid_designer_ui: GridDesignerUI):
+        """
+        Create zones from the grid designer UI.
 
-        # Find all void locations (values 1 or 3)
-        void_mask = grid_data.isin([1, 3]).to_numpy()
+        Parameters
+        ----------
+        grid_designer_ui : GridDesignerUI
+            The grid designer UI.
+        """
+        # TODO: include voids for stacks less than z_size
+
+        # Voids are SM obstacles in simulation
+        void_mask = ~(
+            grid_designer_ui.grid_data.map(lambda x: str(x).isdigit()).to_numpy()
+            | grid_designer_ui.grid_data.map(
+                lambda x: str(x).startswith("P")
+            ).to_numpy()
+            | grid_designer_ui.grid_data.map(lambda x: str(x) == "B").to_numpy()
+        )
         rows, cols = void_mask.shape
         voids = []
 
@@ -58,60 +70,57 @@ class InputZonesAndStations:
 
             void = InputVoid(
                 from_=Coordinates(x=int(start_x), y=int(start_y), z=0),
-                to=Coordinates(x=int(end_x), y=int(end_y), z=simulation_input.z_size),
+                to=Coordinates(x=int(end_x), y=int(end_y), z=grid_designer_ui.z_size),
             )
             voids.append(void)
 
         zone = InputZone(
-            max_x=grid_data.shape[1] - 1,
-            max_y=grid_data.shape[0] - 1,
-            max_z=simulation_input.z_size,
+            max_x=grid_designer_ui.grid_data.shape[1] - 1,
+            max_y=grid_designer_ui.grid_data.shape[0] - 1,
+            max_z=grid_designer_ui.z_size,
             voids=voids,
         )
         self.zones = [zone]
 
-    def _create_stations(
-        self, grid_data: pandas.DataFrame, simulation_input: SimulationInputUI
-    ):
-        # Usually the height of station is 2 bins above ground
-        station_height = simulation_input.z_size - 2
+    def _create_stations(self, grid_designer_ui: GridDesignerUI):
+        """
+        Create stations from the grid designer UI.
 
-        uncleaned_stations = numpy.sort(
-            grid_data.copy()[grid_data >= 10].stack().values
-        )
+        Parameters
+        ----------
+        grid_designer_ui : GridDesignerUI
+            The grid designer UI.
+        """
+        station_height = grid_designer_ui.z_size - 2
 
-        grid_data_array = grid_data.to_numpy()
+        grid_data_array = grid_designer_ui.grid_data.to_numpy()
+        grid_stations = sorted(grid_designer_ui.stations.copy())
 
-        count = 1
         stations: List[InputStation] = []
-        for station_value in uncleaned_stations:
-            y, x = numpy.argwhere(grid_data_array == station_value)[0].tolist()
-            if station_value % 10 == 0:
+        for grid_station in grid_stations:
+            y, x = numpy.argwhere(grid_data_array == grid_station)[0].tolist()
+            station_number = int("".join(filter(str.isdigit, grid_station)))
+
+            if not grid_station.endswith("D") and not grid_station.endswith("P"):
                 drop = InputDropOrPick(
                     coordinates=Coordinates(x=x, y=y, z=station_height),
-                    capacity=simulation_input.drop_capacity,
                 )
                 pick = InputDropOrPick(
                     coordinates=Coordinates(x=x, y=y, z=station_height),
-                    capacity=simulation_input.pick_capacity,
                 )
-                station = InputStation(code=count, drop=drop, pick=pick)
+                station = InputStation(code=station_number, drop=drop, pick=pick)
                 stations.append(station)
-                count += 1
             else:
-                if station_value % 10 == 1:
+                if grid_station.endswith("D"):
                     drop = InputDropOrPick(
                         coordinates=Coordinates(x=x, y=y, z=station_height),
-                        capacity=simulation_input.drop_capacity,
                     )
                 else:
                     pick = InputDropOrPick(
                         coordinates=Coordinates(x=x, y=y, z=station_height),
-                        capacity=simulation_input.pick_capacity,
                     )
-                    station = InputStation(code=count, drop=drop, pick=pick)
-                    stations.append(station)
-                    count += 1
+                station = InputStation(code=station_number, drop=drop, pick=pick)
+                stations.append(station)
 
         self.stations = stations
 
@@ -150,10 +159,9 @@ class InputVoid:
     def __init__(self, from_: Coordinates, to: Coordinates):
         self.to = to
 
-        # Since from is a reserved keyword in Python, we need to use a different way to 
+        # Since from is a reserved keyword in Python, we need to use a different way to
         # set the attribute
         setattr(self, "from", from_)
-
 
 
 class InputStation:
