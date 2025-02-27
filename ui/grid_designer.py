@@ -1,3 +1,6 @@
+import re
+from typing import List
+
 import numpy
 import pandas
 import plotly.graph_objects as go
@@ -16,146 +19,243 @@ class GridDesignerUI:
         pass
 
     def show(self) -> bool:
-        streamlit.write("## Grid Design")
-        streamlit.write(
-            "Upload an excel sheet to start, or define the size of the grid."
-        )
-        streamlit.write(
-            "Input 0 for empty spaces, 1 for SM obstacles (e.g., a physical "
-            + "pillar), 2 for TC obstacles (e.g. bins can be stacked but cars are not "
-            + "possible to pass through), or 3 for SM + TC obstacles."
-        )
+        """
+        Display the grid designer UI.
 
-        col1, col2 = streamlit.columns(2)
-        x_size = col1.number_input(
-            label="X", min_value=1, max_value=MAX_SIZE, step=1, value=20
-        )
-        y_size = col2.number_input(
-            label="Y", min_value=1, max_value=MAX_SIZE, step=1, value=20
-        )
+        Returns
+        -------
+        bool
+            True if the grid designer UI can be displayed successfully, False otherwise.
+        """
+        streamlit.write("## Grid Design")
+        self._show_buttons_and_instructions()
 
         grid_excel_file = streamlit.file_uploader("Upload grid excel.")
-        if grid_excel_file is not None:
-            grid_data: pandas.DataFrame = pandas.read_excel(grid_excel_file, write=None)
-            if MAX_SIZE in grid_data.shape:
-                streamlit.warning(
-                    f"One of the dimensions exceeds the allowed size of {MAX_SIZE}.",
-                    icon="⚠️",
-                )
-
-            if (
-                grid_data.apply(lambda x: pandas.to_numeric(x, errors="coerce"))
-                .isna()
-                .any()
-                .any()
-            ) or (
-                not grid_data.isin(EXCEL_OPTIONS).all().all()
-                and not (grid_data >= 10).any().any()
-            ):
-                streamlit.warning(
-                    "Excel grid contains blank cells or invalid inputs; changing "
-                    + "these cells to 3 - SM & TC obstacles.",
-                    icon="⚠️",
-                )
-
-                grid_data = grid_data.map(
-                    lambda x: (
-                        x if x in EXCEL_OPTIONS or (type(x) == int and x >= 10) else 3
-                    )
-                )
-
-        else:
-            grid_data = pandas.DataFrame(numpy.zeros((y_size, x_size)))
-
-        grid_data: pandas.DataFrame = streamlit.data_editor(grid_data)
-        grid_data.columns = range(grid_data.shape[1])
-
-        if (
-            not grid_data.isin(EXCEL_OPTIONS).all().all()
-            and not (grid_data >= 10).any().any()
-        ):
-            streamlit.warning(
-                "Resultant grid contains invalid inputs; changing these cells to "
-                + "3 - SM & TC obstacles.",
-                icon="⚠️",
-            )
-
-            grid_data = grid_data.map(
-                lambda x: x if x in EXCEL_OPTIONS or x >= 10 else 3
-            )
-
-        stations = grid_data.copy()[grid_data >= 10].stack().values
-
-        # Check for invalid input of stations
-        if any(i % 10 not in [0, 1, 2] for i in stations):
-            streamlit.error(
-                "Invalid values for stations detected; make sure the values end with 0, "
-                + "1 or 2.",
-                icon="❌️",
-            )
+        if grid_excel_file is None:
+            streamlit.warning("No grid file uploaded.", icon="⚠️")
             return False
 
-        # Check whether there is any station in the grid
-        unique_stations, counts = numpy.unique(
-            numpy.array(stations, dtype=int), return_counts=True
+        grid_data = pandas.read_excel(grid_excel_file, header=0, index_col=0, dtype=str)
+
+        # Drop first row and first column
+        grid_data = grid_data.dropna(how="all", axis=0)
+        grid_data = grid_data.dropna(how="all", axis=1)
+
+        # Convert grid data to numeric, coercing non-numeric values to NaN, then get the
+        # maximum value, ignoring NaN
+        numeric_grid = pandas.to_numeric(grid_data.values.ravel(), errors="coerce")
+        self.z_size = int(numeric_grid[~numpy.isnan(numeric_grid)].max())
+
+        self.grid_data = grid_data
+
+        is_success = self._check_station_validity()
+        if not is_success:
+            return False
+
+        self._display_grid()
+
+        streamlit.divider()
+
+        return True
+
+    def _show_buttons_and_instructions(self):
+        """
+        Show the buttons and instructions for the grid designer.
+        """
+        streamlit.write(
+            "Upload a grid excel file for simulation. To get started, click below for "
+            + "template or example, or refer to the instructions."
         )
-        if unique_stations.size == 0:
-            streamlit.warning(
-                "Grid must have at least one station.",
-                icon="⚠️",
-            )
-
-        # Check for duplicated stations
-        duplicates = unique_stations[counts > 1]
-        if len(duplicates) > 0:
-            streamlit.error(
-                f"Duplicated values for stations detected: {duplicates}", icon="❌️"
-            )
-            return False
-
-        # Check for invalid station indices
-        drop_station_ids = [(i - 1) / 10 for i in stations if i % 10 == 1]
-        pick_station_ids = [(i - 2) / 10 for i in stations if i % 10 == 2]
-        mixed_station_ids = [i / 10 for i in stations if i % 10 == 0]
-
-        if any(
-            item in drop_station_ids or item in pick_station_ids
-            for item in mixed_station_ids
-        ):
-            streamlit.error(
-                "Station values that ended with 0 cannot have the same values ended in 1 or 2.",
-                icon="❌️",
-            )
-            return False
-
-        # Check for missing drop-pair stations if any
-        station_ids_with_missing_pair = list(
-            set(drop_station_ids).symmetric_difference(set(pick_station_ids))
+        streamlit.download_button(
+            "Download template",
+            file_name="template.xlsx",
+            data=open("files/template.xlsx", "rb").read(),
+            type="primary",
         )
-        if station_ids_with_missing_pair:
+        streamlit.download_button(
+            "Download example",
+            file_name="example.xlsx",
+            data=open("files/example.xlsx", "rb").read(),
+            type="primary",
+        )
+
+        with streamlit.expander("Instructions: general"):
+            streamlit.write(
+                """
+                To get started, use the template and refer to the example given.
+                
+                The first row and column of the grid excel file are the indices of the grid. 
+                The grid data starts from the second row and second column.
+
+                Formatting (e.g. cell colour, font colour, cell size, cell borders) does 
+                not matter, as long as the inputs are valid. You may use your own 
+                preferred formatting for the ease of designing the grid.
+                """
+            )
+
+        with streamlit.expander("Instructions: valid inputs"):
+            streamlit.write(
+                """
+                Valid inputs are:
+                - Free stack: Any numeric value (e.g. 1, 2, 3)
+                - Stations: "P + station number + optional D/P" (e.g. P1, P1D, P1P)
+                - Buffers: "B" 
+                - Others: Any other characters not defined above
+                - Unavailable stack: Left empty
+
+                **1. Free stack** 
+
+                Free stacks are the cells that bins can be placed into. The numeric 
+                value given is the depth of the stack in bins.
+
+                **2. Stations**
+
+                Stations are the cells that bins can be picked from and dropped into. 
+                They are cells that start with "P", and must follow the pattern 
+                "P + station number + optional D/P". 
+
+                If the station is for both pick and drop, the optional D/P is not 
+                required. For example, "P1" and "P100".
+
+                If the station is for pick only, then the suffix P is required. For 
+                example, "P2P", "P30P". Likewise, if the station is for drop only, then 
+                the suffix D is required. For example, "P2D", "P50D". 
+                
+                Note that the pick and drop stations must come in pair. In other words, 
+                if "P1P" is created, then there must be "P1D", and vice versa.  
+
+                No two stations can share the same station number, unless they are 
+                separate drop and pick stations. For example, if "P1" exists, then "P1D" 
+                or "P1P" is invalid, and vice versa.
+
+                **3. Buffers**
+
+                Buffers are the cells that bins cannot be placed into, but skycars can 
+                travel across. They are denoted as "B".
+
+                **4. Others**
+
+                All other characters that are not defined above are considered as 
+                others. They are treated as unavailable stacks in the simulation. You may 
+                use this to represent chargers, obstacles, etc.
+
+                **5. Unavailable stack**
+
+                Unavailable stacks are the cells that are not used in the grid. They 
+                should be left empty.
+                """
+            )
+
+    def _check_station_validity(self) -> bool:
+        """
+        Check that the stations are valid.
+
+        Returns
+        -------
+        bool
+            True if the stations are valid, False otherwise.
+        """
+        # Find positions of all stations (cells starting with 'P')
+        station_positions = numpy.argwhere(
+            self.grid_data.map(lambda x: str(x).startswith("P")).to_numpy()
+        )
+        stations = self.grid_data.values[
+            station_positions[:, 0], station_positions[:, 1]
+        ].tolist()
+
+        # Check that all stations are unique
+        if len(stations) != len(set(stations)):
+            streamlit.error("Duplicated station detected.", icon="❌")
+            return False
+
+        # Check that all stations are in the correct format using regex pattern
+        pattern = r"^P\d+[DP]?$"
+        for station in stations:
+            if not re.match(pattern, str(station)):
+                streamlit.error(
+                    f"Station {station} does not match required format (P + station "
+                    + "number + optional D/P).",
+                    icon="❌",
+                )
+                return False
+
+        # Check that pick and drop stations match exactly
+        pick_base_stations = set(
+            station[:-1] for station in stations if station.endswith("P")
+        )
+        drop_base_stations = set(
+            station[:-1] for station in stations if station.endswith("D")
+        )
+        if pick_base_stations != drop_base_stations:
             streamlit.error(
-                "Values for stations with missing drop/pick pair detected; make sure "
-                + "the values ended with 1 (drop stations) have to pair with the "
-                + "complementary values that end with 2 (pick stations).",
-                icon="❌️",
+                "Each pick station must have a matching drop station with the same "
+                + "station number.",
+                icon="❌",
             )
             return False
 
+        # Check that stations that do both drop and pick cannot share station numbers
+        # with pick/drop station pairs
+        mixed_base_stations = set(
+            station
+            for station in stations
+            if not (station.endswith("D") or station.endswith("P"))
+        )
+        if mixed_base_stations.intersection(
+            pick_base_stations
+        ) or mixed_base_stations.intersection(drop_base_stations):
+            streamlit.error(
+                "Stations that do both pick and drop cannot share station numbers with "
+                + "pick/drop station pairs.",
+                icon="❌",
+            )
+            return False
+
+        # Save the stations list if they are all valid
+        self.stations: List[str] = stations
+
+        return True
+
+    def _display_grid(self):
+        """
+        Display the grid.
+        """
         discrete_colourscale = [
             [0.0, "#47b39d"],
             [0.2, "#47b39d"],
             [0.2, "#ffc153"],
             [0.4, "#ffc153"],
-            [0.4, "#eb6156"],
-            [0.6, "#eb6156"],
+            [0.4, "#b05f6d"],
+            [0.6, "#b05f6d"],
             [0.6, "#462446"],
             [0.8, "#462446"],
-            [0.8, "#b05f6d"],
-            [1.0, "#b05f6d"],
+            [0.8, "#2c4770"],
+            [1.0, "#2c4770"],
         ]
 
-        grid_data_display = grid_data.copy()
-        grid_data_display[grid_data_display >= 10] = 4
+        # Create a copy of the grid data for display
+        grid_data_display = self.grid_data.copy()
+        grid_data_display = pandas.DataFrame(
+            numpy.where(
+                grid_data_display.map(lambda x: str(x).startswith("P")),
+                1,
+                numpy.where(
+                    grid_data_display.map(lambda x: str(x).isdigit()),
+                    0,
+                    numpy.where(
+                        grid_data_display.map(lambda x: pandas.isna(x)),
+                        4,
+                        numpy.where(
+                            grid_data_display.map(lambda x: str(x) == "B"), 2, 3
+                        ),
+                    ),
+                ),
+            ),
+            index=grid_data_display.index,
+            columns=grid_data_display.columns,
+        )
+
+        # Create a figure for the grid layout
         fig = go.Figure(
             data=go.Heatmap(
                 z=grid_data_display.values,
@@ -163,13 +263,13 @@ class GridDesignerUI:
                 y=list(grid_data_display.index),
                 colorscale=discrete_colourscale,
                 colorbar=dict(
-                    tickvals=EXCEL_OPTIONS + [4],
+                    tickvals=[0, 1, 2, 3, 4],
                     ticktext=[
-                        "0 - Empty",
-                        "1 - SM Obstacles",
-                        "2 - TC Obstacles",
-                        "3 - SM & TC Obstacles",
-                        ">= 10 - Stations",
+                        "Free",
+                        "Stations",
+                        "Buffers",
+                        "Others",
+                        "Unavailable",
                     ],
                     title="Legend",
                 ),
@@ -181,20 +281,20 @@ class GridDesignerUI:
         for col in range(grid_data_display.shape[1] + 1):
             fig.add_shape(
                 type="line",
-                x0=col - 0.5,
-                x1=col - 0.5,
-                y0=-0.5,
-                y1=grid_data_display.shape[0] - 0.5,
+                x0=col + 0.5,
+                x1=col + 0.5,
+                y0=0.5,
+                y1=grid_data_display.shape[0] + 0.5,
                 line=dict(color="gray", width=1),
             )
 
         for row in range(grid_data_display.shape[0] + 1):
             fig.add_shape(
                 type="line",
-                x0=-0.5,
-                x1=grid_data_display.shape[1] - 0.5,
-                y0=row - 0.5,
-                y1=row - 0.5,
+                x0=0.5,
+                x1=grid_data_display.shape[1] + 0.5,
+                y0=row + 0.5,
+                y1=row + 0.5,
                 line=dict(color="gray", width=1),
             )
 
@@ -214,12 +314,6 @@ class GridDesignerUI:
                 showgrid=False,
             ),
         )
+        fig.update_traces(hovertemplate="X: %{x}<br>Y: %{y}<extra></extra>")
 
         streamlit.plotly_chart(fig)
-
-        # Assign value for later use
-        self.grid_data = grid_data
-
-        streamlit.divider()
-
-        return True
