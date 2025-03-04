@@ -33,7 +33,7 @@ class InputZonesAndStations:
             | grid_designer_ui.grid_data.map(
                 lambda x: str(x).startswith("P")
             ).to_numpy()
-            | grid_designer_ui.grid_data.map(lambda x: str(x) == "B").to_numpy()
+            # | grid_designer_ui.grid_data.map(lambda x: str(x) == "B").to_numpy()
         )
         rows, cols = void_mask.shape
         voids = []

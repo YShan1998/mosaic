@@ -54,6 +54,28 @@ class GridDesignerUI:
 
         self._display_grid()
 
+        # Get buffer percentage in grid
+        streamlit.write(
+            "Input the number of bins expected to calculate the buffer percentage."
+        )
+        numeric_grid = pandas.to_numeric(self.grid_data.values.ravel(), errors="coerce")
+        gross_number_of_spaces = int(numeric_grid[~numpy.isnan(numeric_grid)].sum())
+        number_of_bins = streamlit.number_input(
+            "Number of bins expected",
+            min_value=1,
+            max_value=gross_number_of_spaces,
+            value=min(1000, gross_number_of_spaces),
+        )
+
+        buffer_ratio = (
+            gross_number_of_spaces - number_of_bins
+        ) / gross_number_of_spaces
+        col1, col2 = streamlit.columns(2)
+        col1.metric("Gross number of spaces", gross_number_of_spaces)
+        col2.metric("Buffer", f"{buffer_ratio*100:.1f}%")
+
+        self.buffer_ratio = buffer_ratio
+
         streamlit.divider()
 
         return True

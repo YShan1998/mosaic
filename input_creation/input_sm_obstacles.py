@@ -4,15 +4,23 @@ import numpy
 import pandas
 
 from parameters import Parameters
+from ui.grid_designer import GridDesignerUI
+
+
 class InputSMObstacles:
-    def __init__(self, grid_data: pandas.DataFrame):
-        self._create_stacks(grid_data=grid_data)
+    def __init__(self, grid_designer_ui: GridDesignerUI):
+        self._create_stacks(grid_designer_ui=grid_designer_ui)
         self.zoneGroup = Parameters.ZONE_NAME
         self.isSkycarAccessible = False
 
-    def _create_stacks(self, grid_data: pandas.DataFrame):
-        void_mask = grid_data.isin([1, 3]).to_numpy()
-
+    def _create_stacks(self, grid_designer_ui: GridDesignerUI):
+        void_mask = ~(
+            grid_designer_ui.grid_data.map(lambda x: str(x).isdigit()).to_numpy()
+            | grid_designer_ui.grid_data.map(
+                lambda x: str(x).startswith("P")
+            ).to_numpy()
+            # | grid_designer_ui.grid_data.map(lambda x: str(x) == "B").to_numpy()
+        )
         # Get coordinates where void_mask is True
         coordinates = numpy.argwhere(void_mask)
         
