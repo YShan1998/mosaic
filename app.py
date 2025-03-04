@@ -1,14 +1,6 @@
 import streamlit
 
-from ui import GridDesignerUI, SimulationInputUI
-from input_creation import (
-    InputSkyCarSetup,
-    InputZonesAndStations,
-    InputSMObstacles,
-    InputTCObstacles,
-)
-
-from parameters import Parameters
+from ui import GridDesignerUI, SimulationInputUI, SimulationPreparationUI
 
 
 def main():
@@ -23,24 +15,10 @@ def main():
     if not is_grid_designer_ui_success or not is_simulation_input_ui_success:
         return
 
-    input_zones_and_stations = InputZonesAndStations(grid_designer_ui=grid_designer_ui)
-    with streamlit.expander("reset-2.json: Zones and Stations"):
-        streamlit.json(input_zones_and_stations.to_json())
-
-    # input_sm_obstacles = InputSMObstacles(grid_data=grid_designer_ui.grid_data)
-    # with streamlit.expander("reset-3.json: SM Obstacles"):
-    #     streamlit.json(input_sm_obstacles.to_json())
-
-    input_skycar_setup = InputSkyCarSetup(
-        number_of_skycars=simulation_input_ui.number_of_skycars,
-        model=Parameters.ZONE_NAME,
+    simulation_preparation_ui = SimulationPreparationUI(
+        grid_designer_ui=grid_designer_ui, simulation_input_ui=simulation_input_ui
     )
-    with streamlit.expander("reset-5.json: Skycar Setup"):
-        streamlit.json(input_skycar_setup.to_json())
-
-    # input_tc_obstacles = InputTCObstacles(grid_data=grid_designer_ui.grid_data)
-    # with streamlit.expander("reset-6.json: TC Obstacles"):
-    #     streamlit.json(input_tc_obstacles.to_json())
+    simulation_preparation_ui.show()
 
 
 if __name__ == "__main__":
