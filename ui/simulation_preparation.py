@@ -75,6 +75,13 @@ class SimulationPreparationUI:
                 json_data=json_data, file_name="reset-job.json"
             )
 
+        self.input_zones_and_stations = input_zones_and_stations
+        self.input_sm_obstacles = input_sm_obstacles
+        self.input_buffer = input_buffer
+        self.input_skycar_setup = input_skycar_setup
+        self.input_tc_obstacles = input_tc_obstacles
+        self.input_jobs = input_jobs
+
     def _show_individual_json_file(self, json_data: str, file_name: str):
         streamlit.download_button(
             label="Download",
