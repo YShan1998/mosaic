@@ -7,8 +7,9 @@ from input_creation import (
     InputSMObstacles,
     InputTCObstacles,
     InputZonesAndStations,
+    InputJobs,
 )
-from parameters import Parameters
+from core.parameters import Parameters
 from ui.grid_designer import GridDesignerUI
 from ui.simulation_input import SimulationInputUI
 
@@ -61,6 +62,17 @@ class SimulationPreparationUI:
             json_data = input_tc_obstacles.to_json()
             self._show_individual_json_file(
                 json_data=json_data, file_name="reset-6.json"
+            )
+
+        input_jobs = InputJobs(
+            grid_designer_ui=self.grid_designer_ui,
+            simulation_input_ui=self.simulation_input_ui,
+            input_zones_and_stations=input_zones_and_stations,
+        )
+        with streamlit.expander("reset-job.json: Job Parameters"):
+            json_data = input_jobs.to_json()
+            self._show_individual_json_file(
+                json_data=json_data, file_name="reset-job.json"
             )
 
     def _show_individual_json_file(self, json_data: str, file_name: str):

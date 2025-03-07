@@ -3,7 +3,7 @@ import json
 import numpy
 import pandas
 
-from parameters import Parameters
+from core.parameters import Parameters
 from ui.grid_designer import GridDesignerUI
 
 

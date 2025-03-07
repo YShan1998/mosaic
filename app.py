@@ -1,5 +1,6 @@
 import streamlit
 
+from core.simulator import Simulator
 from ui import GridDesignerUI, SimulationInputUI, SimulationPreparationUI
 
 
@@ -20,6 +21,15 @@ def main():
     )
     simulation_preparation_ui.show()
 
+    # is_start_simulation = streamlit.button("Start Simulation", type="primary")
+
+    # if not is_start_simulation:
+    #     return
+
+    # simulator = Simulator() 
+    # response = simulator.initialise_reset()
+    # streamlit.write(response.json())
+    # print()
 
 if __name__ == "__main__":
     main()
