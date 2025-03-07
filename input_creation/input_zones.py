@@ -8,7 +8,7 @@ import pandas
 
 from ui.grid_designer import GridDesignerUI
 from ui.simulation_input import SimulationInputUI
-from parameters import Parameters
+from core.parameters import Parameters
 
 
 class InputZonesAndStations:

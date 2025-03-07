@@ -1,5 +1,5 @@
 import json
-from parameters import Parameters
+from core.parameters import Parameters
 
 
 class InputBuffer:
