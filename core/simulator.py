@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional
 import requests
 import streamlit
 
-from core.config import SM_BASE, TC_BASE
+from core.config import SM_BASE_1, SM_BASE_2, TC_BASE_1, TC_BASE_2
 from ui.simulation_preparation import SimulationPreparationUI
 
 
@@ -11,11 +11,12 @@ class Simulator:
 
     def __init__(self, simulation_preparation_ui: SimulationPreparationUI):
         self.simulation_preparation_ui = simulation_preparation_ui
+        self._set_server()
 
     def run(self):
         steps = [
             ("Reset Layout", self._reset_layout),
-            ("Initialize Setup", self._initialise_setup),
+            ("Initialise Setup", self._initialise_setup),
             ("Configure SM Obstacles", self._configure_SM_obstacles),
             ("Configure Layout", self._configure_layout),
             ("Configure Skycar Setup", self._configure_skycar_setup),
@@ -34,65 +35,75 @@ class Simulator:
 
         status_text.text("Simulation setup complete!")
 
+    def _set_server(self):
+        if self.simulation_preparation_ui.server_number == 1:
+            self.SM_BASE = SM_BASE_1
+            self.TC_BASE = TC_BASE_1
+        else:
+            self.SM_BASE = SM_BASE_2
+            self.TC_BASE = TC_BASE_2
+
     def _reset_layout(self) -> requests.Response:
         response = self._send_request(
-            url=f"{SM_BASE}/v3/initialize/reset",
+            url=f"{self.SM_BASE}/v3/initialize/reset",
             method="POST",
         )
         return response
 
     def _initialise_setup(self) -> requests.Response:
         response = self._send_request(
-            url=f"{SM_BASE}/v3/initialize",
+            url=f"{self.SM_BASE}/v3/initialize",
             method="POST",
-            data=self.simulation_preparation_ui.input_zones_and_stations.to_json(),
+            data=self.simulation_preparation_ui.input_zones_and_stations.to_json(
+                type="dict"
+            ),
         )
         return response
 
     def _configure_SM_obstacles(self) -> requests.Response:
         response = self._send_request(
-            url=f"{SM_BASE}/v3/obstacles",
+            url=f"{self.SM_BASE}/v3/obstacles",
             method="POST",
-            data=self.simulation_preparation_ui.input_sm_obstacles.to_json(),
+            data=self.simulation_preparation_ui.input_sm_obstacles.to_json(type="dict"),
         )
         return response
 
     def _configure_layout(self) -> requests.Response:
         response = self._send_request(
-            url=f"{SM_BASE}/v3/initialize/storage",
+            url=f"{self.SM_BASE}/v3/initialize/storage",
             method="POST",
-            data=self.simulation_preparation_ui.input_buffer.to_json(),
+            data=self.simulation_preparation_ui.input_buffer.to_json(type="dict"),
         )
         return response
 
     def _configure_skycar_setup(self) -> requests.Response:
         response = self._send_request(
-            url=f"{TC_BASE}/simulation/seed-skycars",
+            url=f"{self.TC_BASE}/simulation/seed-skycars",
             method="POST",
-            data=self.simulation_preparation_ui.input_skycar_setup.to_json(),
+            data=self.simulation_preparation_ui.input_skycar_setup.to_json(type="dict"),
         )
         return response
 
     def _configure_TC_obstacles(self) -> requests.Response:
         response = self._send_request(
-            url=f"{TC_BASE}/wcs/obstacle",
+            url=f"{self.TC_BASE}/wcs/obstacle",
             method="POST",
-            data=self.simulation_preparation_ui.input_tc_obstacles.to_json(),
+            data=self.simulation_preparation_ui.input_tc_obstacles.to_json(type="dict"),
         )
         return response
 
     def _start_cube(self) -> requests.Response:
         response = self._send_request(
-            url=f"{TC_BASE}/operation/cube?start=true&bypass=true",
+            url=f"{self.TC_BASE}/operation/cube?start=true&bypass=true",
             method="POST",
         )
         return response
 
     def _send_jobs(self) -> requests.Response:
         response = self._send_request(
-            url=f"{SM_BASE}/v3/dry-runs",
+            url=f"{self.SM_BASE}/v3/dry-runs",
             method="POST",
-            data=self.simulation_preparation_ui.input_jobs.to_json(),
+            data=self.simulation_preparation_ui.input_jobs.to_json(type="dict"),
         )
         return response
 
