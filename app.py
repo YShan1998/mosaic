@@ -1,6 +1,5 @@
 import streamlit
 
-from core.simulator import Simulator
 from ui import GridDesignerUI, SimulationInputUI, SimulationPreparationUI
 
 
