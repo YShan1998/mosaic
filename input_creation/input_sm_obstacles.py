@@ -30,7 +30,9 @@ class InputSMObstacles:
             for row, col in coordinates
         ]
 
-    def to_json(self, save: bool = False, filename: str = "reset-3.json") -> str:
+    def to_json(
+        self, save: bool = False, filename: str = "reset-3.json", type: str = "str"
+    ) -> str:
         json_str = json.dumps(
             self, default=lambda o: o.__dict__, sort_keys=True, indent=4
         )
@@ -39,7 +41,11 @@ class InputSMObstacles:
             with open(filename, "w") as file:
                 file.write(json_str)
 
-        return json_str
+        if type == "str":
+            return json_str
+        elif type == "dict":
+            return json.loads(json_str)
+
 
 class InputStack:
     def __init__(self, x: int, y: int):

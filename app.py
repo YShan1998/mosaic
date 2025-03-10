@@ -20,15 +20,12 @@ def main():
     )
     simulation_preparation_ui.show()
 
-    # is_start_simulation = streamlit.button("Start Simulation", type="primary")
+    if not simulation_preparation_ui.is_start_simulation:
+        return
 
-    # if not is_start_simulation:
-    #     return
+    simulator = Simulator(simulation_preparation_ui=simulation_preparation_ui)
+    simulator.run()
 
-    # simulator = Simulator() 
-    # response = simulator.initialise_reset()
-    # streamlit.write(response.json())
-    # print()
 
 if __name__ == "__main__":
     main()
