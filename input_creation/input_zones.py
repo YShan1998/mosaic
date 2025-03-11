@@ -119,8 +119,8 @@ class InputZonesAndStations:
                     pick = InputDropOrPick(
                         coordinates=Coordinates(x=x, y=y, z=station_height),
                     )
-                station = InputStation(code=station_number, drop=drop, pick=pick)
-                stations.append(station)
+                    station = InputStation(code=station_number, drop=drop, pick=pick)
+                    stations.append(station)
 
         self.stations = stations
 
