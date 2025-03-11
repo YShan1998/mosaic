@@ -1,7 +1,8 @@
 import streamlit
 
-from ui import GridDesignerUI, SimulationInputUI, SimulationPreparationUI
 from core.simulator import Simulator
+from ui import GridDesignerUI, SimulationInputUI, SimulationPreparationUI
+
 
 def main():
     streamlit.title("Mosaic App")

@@ -20,16 +20,17 @@ class InputJobs:
         self.allowCrossZoneGroup = False
         self.enableAutoStore = False
         self.pickFromZoneGroups = [Parameters.ZONE_NAME]
-        self.minLayer = 0
+        self.minLayer = 1
         self.maxLayer = grid_designer_ui.z_size
         self.stations = self._get_list_of_stations(
             input_zones_and_stations=input_zones_and_stations
         )
-        self.qty = (
-            len(self.stations)
-            * simulation_input_ui.goods_in_throughput
-            * SIMULATION_DURATION_IN_HOURS
-        )
+        # self.qty = (
+        #     len(self.stations)
+        #     * simulation_input_ui.goods_in_throughput
+        #     * SIMULATION_DURATION_IN_HOURS
+        # )
+        self.qty = 99
 
     def _get_list_of_stations(
         self, input_zones_and_stations: InputZonesAndStations
