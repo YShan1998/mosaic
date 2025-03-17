@@ -81,7 +81,6 @@ class SimulationPreparationUI:
             index=None,
             placeholder="Select server...",
         )
-        is_start_simulation = streamlit.button("Start Simulation", type="primary")
 
         self.input_zones_and_stations = input_zones_and_stations
         self.input_sm_obstacles = input_sm_obstacles
@@ -89,7 +88,6 @@ class SimulationPreparationUI:
         self.input_skycar_setup = input_skycar_setup
         self.input_tc_obstacles = input_tc_obstacles
         self.input_jobs = input_jobs
-        self.is_start_simulation = is_start_simulation
         self.server_number = server_number
 
     def _show_individual_json_file(self, json_data: str, file_name: str):
