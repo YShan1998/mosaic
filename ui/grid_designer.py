@@ -1,3 +1,4 @@
+import math
 import re
 from typing import List
 
@@ -31,52 +32,92 @@ class GridDesignerUI:
         self._show_buttons_and_instructions()
 
         grid_excel_file = streamlit.file_uploader("Upload grid excel.")
+
+        col1, col2 = streamlit.columns(2)
+        number_of_bins = col1.number_input(
+            "Number of bins expected", min_value=1, value=1000, step=1
+        )
+        buffer_percentage = col2.number_input(
+            "Buffer percentage", min_value=0, max_value=100, value=15, step=1
+        )
+
         if grid_excel_file is None:
             streamlit.warning("No grid file uploaded.", icon="⚠️")
-            return False
 
-        grid_data = pandas.read_excel(grid_excel_file, header=0, index_col=0, dtype=str)
+        else:
+            grid_data = pandas.read_excel(
+                grid_excel_file, header=0, index_col=0, dtype=str
+            )
 
-        # Drop first row and first column
-        grid_data = grid_data.dropna(how="all", axis=0)
-        grid_data = grid_data.dropna(how="all", axis=1)
+            # Drop first row and first column
+            grid_data = grid_data.dropna(how="all", axis=0)
+            grid_data = grid_data.dropna(how="all", axis=1)
 
-        # Convert grid data to numeric, coercing non-numeric values to NaN, then get the
-        # maximum value, ignoring NaN
-        numeric_grid = pandas.to_numeric(grid_data.values.ravel(), errors="coerce")
-        self.z_size = int(numeric_grid[~numpy.isnan(numeric_grid)].max())
+            # Convert grid data to numeric, coercing non-numeric values to NaN, then get the
+            # maximum value, ignoring NaN
+            numeric_grid = pandas.to_numeric(grid_data.values.ravel(), errors="coerce")
+            self.z_size = int(numeric_grid[~numpy.isnan(numeric_grid)].max())
 
-        self.grid_data = grid_data
+            self.grid_data = grid_data
 
-        is_success = self._check_station_validity()
-        if not is_success:
-            return False
+            is_success = self._check_station_validity()
+            if not is_success:
+                return False
 
-        self._display_grid()
+            self._display_grid()
 
-        # Get buffer percentage in grid
-        streamlit.write(
-            "Input the number of bins expected to calculate the buffer percentage."
+        col1, col2, col3 = streamlit.columns(3)
+        gross_number_of_spaces_expected = math.floor(
+            number_of_bins / ((100 - buffer_percentage) / 100)
         )
-        numeric_grid = pandas.to_numeric(self.grid_data.values.ravel(), errors="coerce")
-        gross_number_of_spaces = int(numeric_grid[~numpy.isnan(numeric_grid)].sum())
-        number_of_bins = streamlit.number_input(
-            "Number of bins expected",
-            min_value=1,
-            max_value=gross_number_of_spaces,
-            value=min(1000, gross_number_of_spaces),
+        col1.metric(
+            "Gross number of spaces expected",
+            value=gross_number_of_spaces_expected,
         )
 
-        buffer_ratio = (
-            gross_number_of_spaces - number_of_bins
-        ) / gross_number_of_spaces
-        col1, col2 = streamlit.columns(2)
-        col1.metric("Gross number of spaces", gross_number_of_spaces)
-        col2.metric("Buffer", f"{buffer_ratio*100:.1f}%")
+        if grid_excel_file is None:
+            gross_number_of_spaces_from_grid = "N/A"
+            delta_gross_number = None
+            buffer_percentage_from_grid = "N/A"
+            delta_buffer_percentage = None
+        else:
+            numeric_grid = pandas.to_numeric(
+                self.grid_data.values.ravel(), errors="coerce"
+            )
+            gross_number_of_spaces_from_grid = int(
+                numeric_grid[~numpy.isnan(numeric_grid)].sum()
+            )
+            delta_gross_number = (
+                gross_number_of_spaces_from_grid - gross_number_of_spaces_expected
+            )
 
-        self.buffer_ratio = buffer_ratio
+            buffer_ratio_from_grid = (
+                gross_number_of_spaces_from_grid - number_of_bins
+            ) / gross_number_of_spaces_from_grid
+            buffer_percentage_from_grid = f"{buffer_ratio_from_grid * 100:.1f}%"
+            delta_buffer_percentage = (
+                f"{buffer_ratio_from_grid * 100 - buffer_percentage:.1f}%"
+            )
+
+            self.buffer_ratio = max(0.0, min(1.0, buffer_ratio_from_grid))
+
+        col2.metric(
+            "Gross number of spaces from grid",
+            value=gross_number_of_spaces_from_grid,
+            delta=delta_gross_number,
+            delta_color="off",
+        )
+        col3.metric(
+            "Buffer percentage from grid",
+            value=buffer_percentage_from_grid,
+            delta=delta_buffer_percentage,
+            delta_color="off",
+        )
 
         streamlit.divider()
+
+        if grid_excel_file is None:
+            return False
 
         return True
 

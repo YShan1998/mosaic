@@ -35,6 +35,24 @@ class Simulator:
 
         status_text.text("Simulation setup complete!")
 
+    def stop(self):
+        try:
+            response = self._send_request(
+                url=f"{self.TC_BASE}/operation/cyclestop",
+                method="POST",
+                data={
+                    "status": "Disabled",
+                    "reason": "Matrix simulation has stopped the simulation.",
+                },
+            )
+            return response
+        except requests.exceptions.RequestException as _:
+            streamlit.warning(
+                "Failed to stop simulation, or there is no simulation to be stopped.",
+                icon="⚠️",
+            )
+            return None
+
     def _set_server(self):
         if self.simulation_preparation_ui.server_number == 1:
             self.SM_BASE = SM_BASE_1

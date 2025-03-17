@@ -13,7 +13,7 @@ class InputTCObstacles:
         self.two_d = self._find_tc_obstacles(grid_designer_ui=grid_designer_ui)
 
     def _find_tc_obstacles(self, grid_designer_ui: GridDesignerUI) -> list[str]:
-        # Find all TC obstacles 
+        # Find all TC obstacles
         void_mask = ~(
             grid_designer_ui.grid_data.map(lambda x: str(x).isdigit()).to_numpy()
             | grid_designer_ui.grid_data.map(
@@ -23,7 +23,7 @@ class InputTCObstacles:
         )
 
         rows, cols = void_mask.shape
-        return [f"{x},{y}" for x in range(rows) for y in range(cols) if void_mask[x, y]]
+        return [f"{x},{y}" for y in range(rows) for x in range(cols) if void_mask[y, x]]
 
     def to_json(
         self, save: bool = False, filename: str = "reset-6.json", type: str = "str"
