@@ -17,7 +17,7 @@ class GridDesignerUI:
     """
 
     def __init__(self):
-        pass
+        self.buffer_ratio = None
 
     def show(self) -> bool:
         """
@@ -99,7 +99,7 @@ class GridDesignerUI:
                 f"{buffer_ratio_from_grid * 100 - buffer_percentage:.1f}%"
             )
 
-            self.buffer_ratio = max(0.0, min(1.0, buffer_ratio_from_grid))
+            self.buffer_ratio = buffer_ratio_from_grid
 
         col2.metric(
             "Gross number of spaces from grid",
@@ -113,6 +113,15 @@ class GridDesignerUI:
             delta=delta_buffer_percentage,
             delta_color="off",
         )
+
+        if self.buffer_ratio is not None and self.buffer_ratio < 0:
+            streamlit.error(
+                "Number of bins expected is more than the spaces available in the grid. "
+                + "Please reduce the number of bins expected or allow more spaces in "
+                + "the grid.",
+                icon="❌",
+            )
+            return False
 
         streamlit.divider()
 
