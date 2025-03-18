@@ -21,7 +21,7 @@ class SimulationPreparationUI:
         self.grid_designer_ui = grid_designer_ui
         self.simulation_input_ui = simulation_input_ui
 
-    def show(self):
+    def show(self) -> bool:
         streamlit.write("## Simulation Preparation")
 
         input_zones_and_stations = InputZonesAndStations(
@@ -81,6 +81,8 @@ class SimulationPreparationUI:
             index=None,
             placeholder="Select server...",
         )
+        if server_number is None:
+            return False
 
         self.input_zones_and_stations = input_zones_and_stations
         self.input_sm_obstacles = input_sm_obstacles
@@ -89,6 +91,8 @@ class SimulationPreparationUI:
         self.input_tc_obstacles = input_tc_obstacles
         self.input_jobs = input_jobs
         self.server_number = server_number
+
+        return True
 
     def _show_individual_json_file(self, json_data: str, file_name: str):
         streamlit.download_button(

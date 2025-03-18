@@ -1,11 +1,14 @@
 import streamlit
 
 from core.simulator import Simulator
-from ui import GridDesignerUI, SimulationInputUI, SimulationPreparationUI
+from ui import GridDesignerUI, SimulationInputUI, SimulationPreparationUI, StatusCheckUI
 
 
 def main():
     streamlit.title("Mosaic App")
+
+    status_check_ui = StatusCheckUI()
+    status_check_ui.show()
 
     grid_designer_ui = GridDesignerUI()
     is_grid_designer_ui_success = grid_designer_ui.show()
@@ -19,17 +22,18 @@ def main():
     simulation_preparation_ui = SimulationPreparationUI(
         grid_designer_ui=grid_designer_ui, simulation_input_ui=simulation_input_ui
     )
-    simulation_preparation_ui.show()
+    is_simulation_preparation_ui_success = simulation_preparation_ui.show()
+
+    if not is_simulation_preparation_ui_success:
+        return
 
     simulator = Simulator(simulation_preparation_ui=simulation_preparation_ui)
 
     is_start_simulation = streamlit.button("Start Simulation", type="primary")
-    is_stop_simulation = streamlit.button("Stop Simulation")
+
     if is_start_simulation:
         simulator.run()
 
-    if is_stop_simulation:
-        simulator.stop()
 
 
 if __name__ == "__main__":
