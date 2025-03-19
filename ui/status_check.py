@@ -27,4 +27,4 @@ class StatusCheckUI:
             if is_stop_simulation:
                 MosaicRequest.stop(TC_base)
         elif not is_simulation_running and is_simulation_running is not None:
-            streamlit.success("Simulation is not running.")
+            streamlit.success("No simulation is running.")
