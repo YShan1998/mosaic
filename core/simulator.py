@@ -17,11 +17,11 @@ class Simulator:
         is_simulation_running = MosaicRequest.health_check(self.TC_BASE)
         if is_simulation_running:
             continue_anyway = streamlit.warning(
-                "Simulation is already running.", icon="⚠️"
+                "A simulation is running. Please stop it before running another one by "
+                + "pressing the stop button at the top of the page.",
+                icon="⚠️",
             )
-            continue_anyway = streamlit.button("Continue anyway?")
-            if not continue_anyway:
-                return
+            return
 
         steps = [
             ("Reset Layout", self._reset_layout),
@@ -125,5 +125,3 @@ class Simulator:
             data=self.simulation_preparation_ui.input_jobs.to_json(type="dict"),
         )
         return response
-
-
