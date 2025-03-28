@@ -1,10 +1,10 @@
 import math
 
-from numpy import number
-import pandas
 import streamlit
 
-from abc_distribution import ABCDistribution
+from core.pareto import ParetoCalculator
+from ui.grid_designer import GridDesignerUI
+import plotly.graph_objects as go
 
 
 class SimulationInputUI:
@@ -12,8 +12,8 @@ class SimulationInputUI:
     The UI for simulation input.
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, grid_designer_ui: GridDesignerUI):
+        self.grid_designer_ui = grid_designer_ui
 
     def show(self):
         streamlit.write("## Simulation Input")
@@ -51,82 +51,43 @@ class SimulationInputUI:
             "Goods-in handling time (s)", min_value=1, value=20
         )
 
-        # streamlit.write("#### Station capacity")
-        # col1, col2 = streamlit.columns(2)
-        # pick_capacity = col1.number_input("Pick capacity (bins)", min_value=1, value=1)
-        # drop_capacity = col2.number_input("Drop capacity (bins)", min_value=1, value=2)
+        streamlit.write("#### Simulation duration")
+        simulation_duration = streamlit.selectbox(
+            "Approximate simulation duration",
+            options=[
+                "10 minutes",
+                "30 minutes",
+                "1 hour",
+                "2 hours",
+                "4 hours",
+                "8 hours",
+            ],
+        )
+        duration_mapping = {
+            "10 minutes": 1 / 6,
+            "30 minutes": 1 / 2,
+            "1 hour": 1,
+            "2 hours": 2,
+            "4 hours": 4,
+            "8 hours": 8,
+        }
+        simulation_duration = duration_mapping[simulation_duration]
 
-        # streamlit.write("### Simulation input")
-        # col1, col2 = streamlit.columns(2)
-        # z_size = col1.number_input(
-        #     "Height of grid (bins)", min_value=3, max_value=30, value=15
-        # )
-        # # number_of_skycars = col2.number_input(
-        # #     "Number of skycars", min_value=1, max_value=100, value=10
-        # # )
+        streamlit.write("#### Job distribution")
+        streamlit.write(
+            "The job distribution is based on generalised truncated Pareto distribution."
+            + " Input `p` and `q`, such that `p%` of jobs contribute to top `q%` "
+            + "of the grid layers."
+        )
+        col1, col2 = streamlit.columns(2)
+        pareto_p = (
+            col1.number_input("p (%)", min_value=0, max_value=100, value=80) / 100
+        )
+        pareto_q = (
+            col2.number_input("q (%)", min_value=0, max_value=100, value=20) / 100
+        )
 
-        # streamlit.write("### ABC categories")
-        # streamlit.write(
-        #     """
-        #     The default values assume that
-        #     - the top (A) 20% of the bins receive 70% of the jobs,
-        #     - the middle (B) 30% of the bins receive 20% of the jobs, and
-        #     - the bottom (C) 50% of the bins receive 10% of the jobs.
-        #     """
-        # )
-        # a_default_bin_depth = max(1, math.ceil(z_size * 0.2))
-        # b_default_bin_depth = max(1, math.ceil(z_size * 0.3))
-        # c_default_bin_depth = z_size - a_default_bin_depth - b_default_bin_depth
-        # abc_df = pandas.DataFrame(
-        #     {
-        #         "category": ["Top (A)", "Middle (B)", "Bottom (C)"],
-        #         "number_of_bin_depth": [
-        #             a_default_bin_depth,
-        #             b_default_bin_depth,
-        #             c_default_bin_depth,
-        #         ],
-        #         "percentage_of_jobs": [70, 20, 10],
-        #     }
-        # )
-
-        # abc_df = streamlit.data_editor(
-        #     abc_df,
-        #     column_config={
-        #         "category": "Category",
-        #         "number_of_bin_depth": streamlit.column_config.NumberColumn(
-        #             "Number of bins",
-        #             min_value=1,
-        #             max_value=z_size,
-        #             step=1,
-        #         ),
-        #         "percentage_of_jobs": streamlit.column_config.NumberColumn(
-        #             "Percentage of jobs",
-        #             min_value=1,
-        #             max_value=100,
-        #             step=1,
-        #         ),
-        #     },
-        #     disabled=["category"],
-        #     hide_index=True,
-        # )
-        # abc_df["category"] = ["A", "B", "C"]
-
-        # if abc_df["number_of_bin_depth"].sum() != z_size:
-        #     streamlit.error(
-        #         f"Sum of number of bins is not equal to {z_size}; please amend the "
-        #         + "values in the ABC input table."
-        #     )
-        #     return False
-
-        # if abc_df["percentage_of_jobs"].sum() != 100:
-        #     streamlit.error(
-        #         f"Sum of percentage of jobs is not equal to 100; please amend the "
-        #         + "values in the ABC input table."
-        #     )
-        #     return False
-
-        # # TODO: Fix ABC to suit job creation
-        # abc = ABCDistribution(abc_df=abc_df, z_size=z_size)
+        self._show_job_distribution_plot(pareto_p, pareto_q)
 
         # Assign values for later use
         self.pick_throughput = pick_throughput
@@ -134,6 +95,7 @@ class SimulationInputUI:
         self.pick_time = pick_time
         self.goods_in_time = goods_in_time
         self.number_of_skycars = number_of_skycars
+        self.simulation_duration = simulation_duration
 
         streamlit.divider()
 
@@ -145,3 +107,53 @@ class SimulationInputUI:
         robot can roughly handle 25 bins per hour.
         """
         return math.ceil(total_throughput / 25)
+
+    def _show_job_distribution_plot(self, pareto_p: float, pareto_q: float):
+        z_size = self.grid_designer_ui.z_size
+        if z_size is None:
+            return
+
+        pareto = ParetoCalculator(min_x=1, max_x=z_size)
+        x0, alpha = pareto.get_alpha(p=pareto_p, q=pareto_q)
+
+        probabilities_percent = [
+            pareto.probability_of_layer(layer=layer, alpha=alpha) * 100
+            for layer in range(1, z_size + 1)
+        ]
+        top_x0_sum = sum(probabilities_percent[: int(x0)])
+        streamlit.info(
+            f"{top_x0_sum:.1f}% of the jobs go into the top {int(x0)} layer(s).",
+        )
+
+        # xq = pareto_q * z_size + 1
+        # theoretical_minimum_p = pareto.cdf(xq, alpha=0.001)
+        # theoretical_maximum_q = (pareto.inverse_cdf(pareto_p, alpha=0.001) - 1) / z_size
+
+        # streamlit.info(f"Theoretical minimum p: {theoretical_minimum_p}")
+        # streamlit.info(f"Theoretical maximum q: {theoretical_maximum_q}")
+
+        fig = go.Figure(
+            data=go.Bar(
+                x=list(range(1, z_size + 1)),
+                y=probabilities_percent,
+                text=[f"{p:.2f}" for p in probabilities_percent],
+                textposition="outside",
+            )
+        )
+
+        fig.update_layout(
+            title="Job Distribution by Position of Layer",
+            xaxis_title="Position of Layer",
+            yaxis_title="Probability of layer (%)",
+            showlegend=False,
+        )
+
+        # Calculate sum of top int(x0) probabilities_percent
+        fig.update_traces(
+            marker_pattern_shape=["\\"] * int(x0) + [""] * (z_size - int(x0)),
+            marker_pattern_solidity=0.8,
+        )
+
+        streamlit.plotly_chart(fig)
+
+        self.job_distribution_probabilities = [i / 100 for i in probabilities_percent]
