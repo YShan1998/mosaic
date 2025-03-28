@@ -1,9 +1,4 @@
 from typing import Tuple
-from xml.dom.pulldom import parseString
-
-import numpy
-from matplotlib import pyplot
-from pandas import qcut
 
 
 class ParetoCalculator:
