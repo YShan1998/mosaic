@@ -12,25 +12,21 @@ SIMULATION_DURATION_IN_HOURS: int = 5
 class InputJobs:
     def __init__(
         self,
-        grid_designer_ui: GridDesignerUI,
-        simulation_input_ui: SimulationInputUI,
         input_zones_and_stations: InputZonesAndStations,
+        quantity: int,
+        min_layer: int = 1,
+        max_layer: int = 2,
     ):
-        self.mode = "CONTINUOUS"
+        self.mode = "SINGLE_ROUND"
         self.allowCrossZoneGroup = False
         self.enableAutoStore = False
         self.pickFromZoneGroups = [Parameters.ZONE_NAME]
-        self.minLayer = 1
-        self.maxLayer = grid_designer_ui.z_size
+        self.minLayer = min_layer
+        self.maxLayer = max_layer
         self.stations = self._get_list_of_stations(
             input_zones_and_stations=input_zones_and_stations
         )
-        # self.qty = (
-        #     len(self.stations)
-        #     * simulation_input_ui.goods_in_throughput
-        #     * SIMULATION_DURATION_IN_HOURS
-        # )
-        self.qty = 99
+        self.qty = quantity
 
     def _get_list_of_stations(
         self, input_zones_and_stations: InputZonesAndStations

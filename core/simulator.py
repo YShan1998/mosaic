@@ -16,7 +16,7 @@ class Simulator:
     def run(self):
         is_simulation_running = MosaicRequest.health_check(self.TC_BASE)
         if is_simulation_running:
-            continue_anyway = streamlit.warning(
+            streamlit.warning(
                 "A simulation is running. Please stop it before running another one by "
                 + "pressing the stop button at the top of the page.",
                 icon="⚠️",
@@ -31,7 +31,7 @@ class Simulator:
             ("Configure TC Obstacles", self._configure_TC_obstacles),
             ("Configure Skycar Setup", self._configure_skycar_setup),
             ("Start Cube", self._start_cube),
-            ("Send Jobs", self._send_jobs),
+            ("Send Jobs", self._send_list_of_jobs),
         ]
 
         progress_bar = streamlit.progress(0)
@@ -119,9 +119,32 @@ class Simulator:
         )
         return response
 
-    def _send_jobs(self) -> requests.Response:
-        response = MosaicRequest.send_request(
-            url=f"{self.SM_BASE}/v3/dry-runs",
-            data=self.simulation_preparation_ui.input_jobs.to_json(type="dict"),
-        )
-        return response
+    # def _send_jobs_1(self) -> requests.Response:
+    #     response = MosaicRequest.send_request(
+    #         url=f"{self.SM_BASE}/v3/dry-runs",
+    #         data=self.simulation_preparation_ui.input_jobs_1.to_json(type="dict"),
+    #     )
+    #     return response
+
+    # def _send_jobs_2(self) -> requests.Response:
+    #     response = MosaicRequest.send_request(
+    #         url=f"{self.SM_BASE}/v3/dry-runs",
+    #         data=self.simulation_preparation_ui.input_jobs_2.to_json(type="dict"),
+    #     )
+    #     return response
+
+    def _send_list_of_jobs(self) -> requests.Response:
+        for input_jobs in self.simulation_preparation_ui.input_jobs_list:
+            _ = MosaicRequest.send_request(
+                url=f"{self.SM_BASE}/v3/dry-runs",
+                data=input_jobs.to_json(type="dict"),
+            )
+
+    # def _send_jobs(self, layer_index: int) -> requests.Response:
+    #     response = MosaicRequest.send_request(
+    #         url=f"{self.SM_BASE}/v3/dry-runs",
+    #         data=self.simulation_preparation_ui.input_jobs_list[layer_index].to_json(
+    #             type="dict"
+    #         ),
+    #     )
+    #     return response

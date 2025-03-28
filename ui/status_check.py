@@ -21,10 +21,12 @@ class StatusCheckUI:
 
     def check_if_simulation_is_running(self, TC_base: str):
         is_simulation_running = MosaicRequest.health_check(TC_base)
+        
         if is_simulation_running:
             streamlit.success("Simulation is running.")
             is_stop_simulation = streamlit.button("Stop Simulation")
             if is_stop_simulation:
                 MosaicRequest.stop(TC_base)
+
         elif not is_simulation_running and is_simulation_running is not None:
             streamlit.success("No simulation is running.")

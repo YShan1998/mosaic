@@ -1,15 +1,17 @@
-import json
+import math
+from typing import List
+
 import streamlit
 
+from core.parameters import Parameters
 from input_creation import (
     InputBuffer,
+    InputJobs,
     InputSkyCarSetup,
     InputSMObstacles,
     InputTCObstacles,
     InputZonesAndStations,
-    InputJobs,
 )
-from core.parameters import Parameters
 from ui.grid_designer import GridDesignerUI
 from ui.simulation_input import SimulationInputUI
 
@@ -24,56 +26,63 @@ class SimulationPreparationUI:
     def show(self) -> bool:
         streamlit.write("## Simulation Preparation")
 
+        # Create input objects
         input_zones_and_stations = InputZonesAndStations(
             grid_designer_ui=self.grid_designer_ui
         )
-        with streamlit.expander("reset-2.json: Zones and Stations"):
-            json_data = input_zones_and_stations.to_json()
-            self._show_individual_json_file(
-                json_data=json_data, file_name="reset-2.json"
-            )
-
         input_sm_obstacles = InputSMObstacles(grid_designer_ui=self.grid_designer_ui)
-        with streamlit.expander("reset-3.json: SM Obstacles"):
-            json_data = input_sm_obstacles.to_json()
-            self._show_individual_json_file(
-                json_data=json_data, file_name="reset-3.json"
-            )
-
         input_buffer = InputBuffer(buffer_ratio=self.grid_designer_ui.buffer_ratio)
-        with streamlit.expander("reset-4.json: Buffer"):
-            json_data = input_buffer.to_json()
-            self._show_individual_json_file(
-                json_data=json_data, file_name="reset-4.json"
-            )
-
         input_skycar_setup = InputSkyCarSetup(
             number_of_skycars=self.simulation_input_ui.number_of_skycars,
             model=Parameters.ZONE_NAME,
         )
-        with streamlit.expander("reset-5.json: Skycar Setup"):
-            json_data = input_skycar_setup.to_json()
-            self._show_individual_json_file(
-                json_data=json_data, file_name="reset-5.json"
-            )
-
         input_tc_obstacles = InputTCObstacles(grid_designer_ui=self.grid_designer_ui)
-        with streamlit.expander("reset-6.json: TC Obstacles"):
-            json_data = input_tc_obstacles.to_json()
-            self._show_individual_json_file(
-                json_data=json_data, file_name="reset-6.json"
-            )
-
-        input_jobs = InputJobs(
-            grid_designer_ui=self.grid_designer_ui,
-            simulation_input_ui=self.simulation_input_ui,
-            input_zones_and_stations=input_zones_and_stations,
+        input_jobs_list = self._create_input_jobs_list(
+            input_zones_and_stations=input_zones_and_stations
         )
-        with streamlit.expander("reset-job.json: Job Parameters"):
-            json_data = input_jobs.to_json()
-            self._show_individual_json_file(
-                json_data=json_data, file_name="reset-job.json"
-            )
+
+        # Option to show request files
+        is_show_files = streamlit.checkbox("Show request files")
+        if is_show_files:
+            with streamlit.expander("reset-2.json: Zones and Stations"):
+                json_data = input_zones_and_stations.to_json()
+                self._show_individual_json_file(
+                    json_data=json_data, file_name="reset-2.json"
+                )
+
+            with streamlit.expander("reset-3.json: SM Obstacles"):
+                json_data = input_sm_obstacles.to_json()
+                self._show_individual_json_file(
+                    json_data=json_data, file_name="reset-3.json"
+                )
+
+            with streamlit.expander("reset-4.json: Buffer"):
+                json_data = input_buffer.to_json()
+                self._show_individual_json_file(
+                    json_data=json_data, file_name="reset-4.json"
+                )
+
+            with streamlit.expander("reset-5.json: Skycar Setup"):
+                json_data = input_skycar_setup.to_json()
+                self._show_individual_json_file(
+                    json_data=json_data, file_name="reset-5.json"
+                )
+
+            with streamlit.expander("reset-6.json: TC Obstacles"):
+                json_data = input_tc_obstacles.to_json()
+                self._show_individual_json_file(
+                    json_data=json_data, file_name="reset-6.json"
+                )
+
+            for input_jobs in input_jobs_list:
+                with streamlit.expander(
+                    f"reset-job-{input_jobs.minLayer}.json: Job Parameters"
+                ):
+                    json_data = input_jobs.to_json()
+                    self._show_individual_json_file(
+                        json_data=json_data,
+                        file_name=f"reset-job-{input_jobs.minLayer}.json",
+                    )
 
         server_number = streamlit.selectbox(
             "Choose a server to run the simulation on.",
@@ -89,7 +98,7 @@ class SimulationPreparationUI:
         self.input_buffer = input_buffer
         self.input_skycar_setup = input_skycar_setup
         self.input_tc_obstacles = input_tc_obstacles
-        self.input_jobs = input_jobs
+        self.input_jobs_list = input_jobs_list
         self.server_number = server_number
 
         return True
@@ -103,3 +112,21 @@ class SimulationPreparationUI:
             type="primary",
         )
         streamlit.json(json_data)
+
+    def _create_input_jobs_list(
+        self, input_zones_and_stations: InputZonesAndStations
+    ) -> List[InputJobs]:
+        return [
+            InputJobs(
+                input_zones_and_stations=input_zones_and_stations,
+                min_layer=i,
+                max_layer=i,
+                quantity=math.ceil(
+                    len(input_zones_and_stations.stations)
+                    * self.simulation_input_ui.goods_in_throughput
+                    * self.simulation_input_ui.simulation_duration
+                    * self.simulation_input_ui.job_distribution_probabilities[i - 1]
+                ),
+            )
+            for i in range(1, self.grid_designer_ui.z_size + 1)
+        ]

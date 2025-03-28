@@ -18,6 +18,7 @@ class GridDesignerUI:
 
     def __init__(self):
         self.buffer_ratio = None
+        self.z_size = None
 
     def show(self) -> bool:
         """
@@ -38,7 +39,7 @@ class GridDesignerUI:
             "Number of bins expected", min_value=1, value=1000, step=1
         )
         buffer_percentage = col2.number_input(
-            "Buffer percentage", min_value=0, max_value=100, value=15, step=1
+            "Buffer percentage expected", min_value=0, max_value=100, value=15, step=1
         )
 
         if grid_excel_file is None:
